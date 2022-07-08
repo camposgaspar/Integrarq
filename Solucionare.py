@@ -222,10 +222,15 @@ class Module_SOLUCIONARE():
             password (str): Senha - Parte 3 do login
             codes (list):  Códigos aos quais serão enviados os andamentos
         """
-        nothing_new = False
-        driver = self.init_driver()
-        self.login_solucionare(driver, self.url, company, user, password)
-        self.email_send(driver, codes)
+        try:  # Tenta fazer a parte importante. Se der erro, para o programa e não envia nada, se não der erro, ok.
+            nothing_new = False
+            driver = self.init_driver()
+            self.login_solucionare(driver, self.url, company, user, password)
+            self.email_send(driver, codes)
+        except Exception as e:
+            print(e)
+            return
+
         self.confirm_send(driver)
 
         # Aguarda o fim do carregamento
