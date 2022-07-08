@@ -250,6 +250,6 @@ class Module_SOLUCIONARE():
 
         with open(f"{codes[0]}-{datetime.today().strftime('%d.%m.%Y')}.txt", "w", encoding='UTF8', newline='') as f:
             f.write(data)
-            f.close()
+        f.close()
 
         input("Fechar janela: ")
