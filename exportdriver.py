@@ -14,7 +14,6 @@ class Module_drive():
         self.service = Create_Service("client_secrets.json", api_name, api_version, scopes)
 
     def create_folder(self, new_folder_name, *parent):
-        #TODO Novo metodo para criar uma nova pasta quando virar o mês ou o ano.
         """
         Cria uma nova pasta no Google Drive.
 
@@ -26,7 +25,6 @@ class Module_drive():
             'mimeType': "application/vnd.google-apps.folder",
             'parents': list(parent)
         }
-        print(file_metadata)
         self.service.files().create(body=file_metadata).execute()
 
     @staticmethod
@@ -39,7 +37,7 @@ class Module_drive():
         :return str
         """
         client_folder = ""
-        f = open("config.json")
+        f = open("./config/config.json")
         infos = json.load(f)
         for k, v in infos.items():
             for k1, v1 in v.items():
@@ -59,7 +57,7 @@ class Module_drive():
         :return str
         """
         file_mime = ""
-        f = open("MIME.json")
+        f = open("./config/MIME.json")
         file_extension = f".{file.split('.')[-1]}"
         mimes = json.load(f)
         for key, value in mimes.items():
@@ -112,21 +110,55 @@ class Module_drive():
         final_folder = ""
         month, year = self.find_date()
 
-        querry = f"parents = '{root}'"
-        children = self.service.files().list(includeItemsFromAllDrives=True, supportsAllDrives=True, q=querry).execute()
-        files = children.get('files')
+        year_querry = f"parents = '{root}'"
+        year_children = self.service.files().list(includeItemsFromAllDrives=True, supportsAllDrives=True,
+                                                  q=year_querry).execute()
+        year_folders = year_children.get('files')
 
-        for item in files:
-            if item.get("name") == year:
-                child = item.get("id")
+        # Verifica se há uma pasta para o ano presente. Se não houver, cria a pasta.
+        needs_year = True
+        for i in range(len(year_folders)):
+            if year in year_folders[i].values():
+                needs_year = False
 
-        querry2 = f"parents = '{child}'"
-        children2 = self.service.files().list(includeItemsFromAllDrives=True, supportsAllDrives=True,
-                                              q=querry2).execute()
-        files2 = children2.get('files')
-        for item2 in files2:
-            if month in item2.get("name"):
-                final_folder = item2.get("id")
+        if needs_year:
+            self.create_folder(year, root)
+            year_children = self.service.files().list(includeItemsFromAllDrives=True, supportsAllDrives=True,
+                                                      q=year_querry).execute()
+            year_folders = year_children.get('files')
+
+        for year_folder in year_folders:
+            if year_folder.get("name") == year:
+                child = year_folder.get("id")
+
+        month_querry = f"parents = '{child}'"
+        month_children = self.service.files().list(includeItemsFromAllDrives=True, supportsAllDrives=True,
+                                                   q=month_querry).execute()
+        month_folders = month_children.get('files')
+
+        # Verifica se há uma pasta para o mês presente. Se não houver, cria a pasta.
+        needs_month = True
+        for i in range(len(month_folders)):
+            if month in month_folders[i].values():
+                needs_month = False
+
+        if needs_month:
+            long_date = month
+            f = open("./config/dates.json")
+            data = json.load(f)
+            for key, value in data.items():
+                if key == month:
+                    long_date = value
+                    break
+            f.close()
+            self.create_folder(long_date, child)
+            month_children = self.service.files().list(includeItemsFromAllDrives=True, supportsAllDrives=True,
+                                                       q=month_querry).execute()
+            month_folders = month_children.get('files')
+
+        for month_folder in month_folders:
+            if month in month_folder.get("name"):
+                final_folder = month_folder.get("id")
 
         return final_folder
 
@@ -142,14 +174,10 @@ class Module_drive():
         self.upload_file(file, folder)
 
 
-
-
 if __name__ == "__main__":
     drive = Module_drive()
-    # drive.create_folder("teste")
-    # drive = Module_drive()
-    # drive.upload_file("./reports/9020-21.07.2022.txt", "13J2TymXTv5gxV7Wb1g7iT802k-4EYZjK")
-    # drive.find_folder("1O5Hn4B7y3oynk95XYP_6IcSOxIR6Gq5y")
-    drive.run_processes("./reports/9020-21.07.2022.txt", "Bermudes_DF")
+    for file in os.listdir("./reports"):
+        drive.run_processes(f"./reports/{file}", "tests")
 
-
+    # TODO Excluir o documento na máquina após ser enviado para o Drive. Apagar apenas quando o documento for enviado
+    #  com sucesso.
