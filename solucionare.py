@@ -3,12 +3,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
 from datetime import datetime, timedelta
-from selenium.common.exceptions import NoSuchElementException
-from selenium.common.exceptions import ElementNotInteractableException
+from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException
+import json
 import time
 
 
-class Module_SOLUCIONARE():
+class Module_SOLUCIONARE:
 
     def __init__(self):
         chrome_options = Options()
@@ -25,24 +25,32 @@ class Module_SOLUCIONARE():
 
     @staticmethod
     def close_driver(driver):
-        """Encerra o Webdriver.
+        """
+        Encerra o Webdriver.
 
-        Parameters:
-            driver (object): Webriver que será encerrado
-            """
+        :param object driver: Webriver que será encerrado
+        """
         driver.quit()
 
     @staticmethod
-    def login_solucionare(driver, url, company, user, password):
-        """Login no sistema.
+    def credentials_solucionare():
+        """Recupera as credenciais de login de config.json"""
+        f = open("./config/config.json")
+        infos = json.load(f)
+        login = infos['Solucionare']['login']
+        return login['company'], login['user'], login['password']  # Now this is nice
 
-        Parameters:
-            driver (object):    Selenium Webdriver
-            url (str):  URL do portal de login da Solucionare
-            company (str):  Empresa - Parte 1 do Login
-            user (str): Usuário - Parte 2 do login
-            password (str): Senha - Parte 3 do login
-            """
+    @staticmethod
+    def login_solucionare(driver, url, company, user, password):
+        """
+        Login no sistema.
+
+        :param object driver: Selenium Webdriver
+        :param str url: URL do portal de login da Solucionare
+        :param str company: Empresa - Parte 1 do Login
+        :param str user: Usuário - Parte 2 do login
+        :param str password: Senha - Parte 3 do login
+        """
         driver.implicitly_wait(10)
         driver.get(url)
 
@@ -55,13 +63,13 @@ class Module_SOLUCIONARE():
 
     @staticmethod
     def send_codes(box, codes):
-        """Insere os códigos no campo.
+        """
+        Insere os códigos no campo.
             (Código; TAB; Código; TAB)
 
-        Parameters:
-            box (object):   Objeto do webdriver onde os códigos serão inseridos
-            codes (list):  Códigos aos quais serão enviados os andamentos
-            """
+        :param object box:   Objeto do webdriver onde os códigos serão inseridos
+        :param list codes:  Códigos aos quais serão enviados os andamentos
+        """
         for code in codes:
             box.send_keys(code)
             box.send_keys(Keys.TAB)
@@ -78,13 +86,27 @@ class Module_SOLUCIONARE():
 
         return day.strftime('%d'), month, last_month, year
 
-    def email_send(self, driver, codes):
-        """Preenche o formulário no site.
+    @staticmethod
+    def find_codes(client):
+        """
+        Encontra a pasta do Google Drive no arquivo de configurações
+        God has forsaken us!
 
-        Parameters:
-            driver(object): Webdriver
-            codes (list):  Códigos aos quais serão enviados os andamentos
-            """
+        :param str client: Um dos clientes em config.json (Bermudes_DF, Bermudes_RJ, JG, TAVAD)
+        :return list
+        """
+        client_codes = []
+        f = open("./config/config.json")
+        infos = json.load(f)
+        return infos['Solucionare']['clients'].get(client, {}).get('codes', [])
+
+    def email_send(self, driver, codes):
+        """
+        Preenche o formulário no webservice.
+
+        :param object driver: Selenium Webdriver
+        :param list codes:  Códigos aos quais serão enviados os andamentos
+        """
         # Acessa área de e-mails
         driver.get(
             "http://online.solucionarelj.com.br:9191/gerenciador/gerenciador_novo/modulos/andamento_processual/router"
@@ -102,10 +124,6 @@ class Module_SOLUCIONARE():
 
         # Apenas novos a partir de data
         driver.find_element(By.XPATH, '//*[@id="form_email"]/div[4]/div/label[3]/div/ins').click()
-
-        # TODO - TESTE - Últimos 5 movimentos / Enviar todos
-        # driver.find_element(By.XPATH, '//*[@id="form_email"]/div[4]/div/label[5]/div/ins').click()
-        # driver.find_element(By.XPATH, '//*[@id="form_email"]/div[2]/div/label[1]/div/ins').click()
 
         # Define datas, hoje -1 mês; Insere datas no campo; Clica no bootstrap para inserir a data no form.
         day, month, last_month, year = self.find_date()
@@ -141,20 +159,21 @@ class Module_SOLUCIONARE():
 
     @staticmethod
     def confirm_send(driver):
-        """Pressiona o botão send
+        """
+        Pressiona o botão send.
 
-        Parameters:
-            driver(object): Selenium Webdriver
-            """
+        :param object driver: Selenium Webdriver
+        """
         driver.find_element(By.XPATH, '//*[@id="form_email"]/div[13]/div/div/button').click()
 
     @staticmethod
     def check_nothing_new(driver):
-        """Verifica se a mensagem de nenhuma movimentação aparece.
+        """
+        Verifica se a mensagem de nenhuma movimentação aparece.
 
-        Parameters:
-            driver(object): Selenium Webdriver
-            """
+        :param object driver: Selenium Webdriver
+        :return bool
+        """
         try:
             driver.find_element(By.XPATH, '//*[@id="gritter-item-1"]/div[2]/div[1]/p')
         except NoSuchElementException:
@@ -163,11 +182,12 @@ class Module_SOLUCIONARE():
 
     @staticmethod
     def check_loading(driver):
-        """Verifica se está carregando o envio
+        """
+        Verifica se está carregando o envio.
 
-                Parameters:
-            driver(object): Selenium Webdriver
-            """
+        :param object driver: Selenium Webdriver
+        :return bool
+        """
         try:
             if driver.find_element(By.XPATH, '//*[@class="modal fade in"]').is_displayed():
                 return True
@@ -178,11 +198,12 @@ class Module_SOLUCIONARE():
 
     @staticmethod
     def check_report(driver):
-        """Verifica se janela com relatório está disponível
+        """
+        Verifica se janela com relatório está disponível.
 
-        Parameters:
-            driver(object): Selenium Webdriver
-            """
+        :param object driver: Selenium Webdriver
+        :return bool
+        """
         try:
             driver.find_element(By.XPATH, '//*[@id="loader"]/div/div').click()
         except ElementNotInteractableException:
@@ -191,45 +212,47 @@ class Module_SOLUCIONARE():
 
     @staticmethod
     def check_report_available(driver):
-        """Verifica se a caixa com relatório está disponível.
+        """
+        Verifica se a caixa com relatório está disponível.
 
-        Parameters:
-            driver(object): Selenium Webdriver
-            """
+        :param object driver: Selenium Webdriver
+        :return bool
+        """
         try:
             driver.find_element(By.XPATH, '//*[@id="modalRelatorio"]/div/div[2]')
         except NoSuchElementException:
             return True
         return False
 
-    def get_text(self, driver):
-        """Puxa as informações do relatório.
+    @staticmethod
+    def get_text(driver):
+        """
+        Puxa as informações do relatório.
 
-        Parameters:
-            driver(object): Selenium Webdriver
-            """
+        :param object driver: Selenium Webdriver
+        """
         driver.find_element(By.XPATH, '//*[@id="modalRelatorio"]/div/div[2]').click()
         info_panel = driver.find_element(By.XPATH, '//*[@id="filtroRelatorio"]').text
         report = driver.find_element(By.XPATH, '//*[@id="modalRelatorio"]/div/div[2]/div[2]').text
         return info_panel, report
 
-    def run_processes(self, company, user, password, codes):
-        """Roda o processo.
-
-        Parameters:
-            company (str):  Empresa - Parte 1 do Login
-            user (str):     Usuário - Parte 2 do login
-            password (str): Senha - Parte 3 do login
-            codes (list):  Códigos aos quais serão enviados os andamentos
+    def run_processes(self, client):
         """
-        try:  # Tenta fazer a parte importante. Se der erro, para o programa e não envia nada, se não der erro, ok.
+        Roda o processo.
+
+        :param str client: Um dos clientes em config.json (Bermudes_DF, Bermudes_RJ, JG, TAVAD)
+        """
+        # Tenta fazer a parte importante. Se der erro, para o programa e não envia nada, se não der erro, ok.
+        try:
             nothing_new = False
             driver = self.init_driver()
+            company, user, password = self.credentials_solucionare()
             self.login_solucionare(driver, self.url, company, user, password)
+            codes = self.find_codes(client)
             self.email_send(driver, codes)
         except Exception as e:
             print(e)
-            return
+            raise Exception("Erro ao preencher formulário. Nenhum e-mail foi enviado.") from e
 
         self.confirm_send(driver)
 
@@ -245,16 +268,21 @@ class Module_SOLUCIONARE():
             print(data)
 
         else:
-            # Aguarda a janela do relatório ficar disponível
-            while self.check_report(driver):
-                print(f"Carregando relatório - {datetime.now().strftime('%H:%M:%S')}")
+            try:
+                # Aguarda a janela do relatório ficar disponível
+                while self.check_report(driver):
+                    print(f"Carregando relatório - {datetime.now().strftime('%H:%M:%S')}")
+                    time.sleep(1)  # Estava checando rápido de mais
 
-            header, body = self.get_text(driver)
-            data = f"{header}\n\n{body}"
-            print(data)
+                header, body = self.get_text(driver)
+                data = f"{header}\n\n{body}"
+                print(data)
+            except:
+                data = f"Não há movimentações para os códigos {codes}"
 
-        with open(f"{codes[0]}-{datetime.today().strftime('%d.%m.%Y')}.txt", "w", encoding='UTF8', newline='') as f:
+        # Salva o relatório em um documento .txt na pasta reports
+        with open(f"./reports/{codes[0]}-{datetime.today().strftime('%d.%m.%Y')}.txt", "w", encoding='UTF8',
+                  newline='') as f:
             f.write(data)
         f.close()
-
-        input("Fechar janela: ")
+        return f"./reports/{codes[0]}-{datetime.today().strftime('%d.%m.%Y')}.txt"
