@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 
-class Module_drive():
+class Module_drive:
 
     def __init__(self):
         api_version = "v3"
@@ -39,13 +39,7 @@ class Module_drive():
         client_folder = ""
         f = open("./config/config.json")
         infos = json.load(f)
-        for k, v in infos.items():
-            for k1, v1 in v.items():
-                if k1 == client:
-                    for k2, v2 in v1.items():
-                        if k2 == "drive_path":
-                            client_folder = v2
-        return client_folder
+        return infos['Solucionare'].get('clients', {}).get(client, {}).get('drive_path')
 
     @staticmethod
     def find_mime(file):
@@ -97,7 +91,8 @@ class Module_drive():
         }
 
         media = MediaFileUpload(file, mimetype=mime)
-        self.service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+        response = self.service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+        return response
 
     def find_folder(self, root):
         """
@@ -139,7 +134,7 @@ class Module_drive():
         # Verifica se há uma pasta para o mês presente. Se não houver, cria a pasta.
         needs_month = True
         for i in range(len(month_folders)):
-            if month in month_folders[i].values():
+            if month in str(month_folders[i].values()):
                 needs_month = False
 
         if needs_month:
@@ -164,20 +159,19 @@ class Module_drive():
 
     def run_processes(self, file, client):
         """
-        Roda o processo de upload de documento
+        Roda o processo de upload de documento.
 
         :param str file: Caminho do documento que será enviado para o drive.
         :param str client: Um dos clientes em config.json (Bermudes_DF, Bermudes_RJ, JG, TAVAD)
         """
         root_id = self.find_root(client)
         folder = self.find_folder(root_id)
-        self.upload_file(file, folder)
+        response = self.upload_file(file, folder)
+        return response
 
+    # TODO Error handling. A lot of error handling
 
 if __name__ == "__main__":
     drive = Module_drive()
     for file in os.listdir("./reports"):
         drive.run_processes(f"./reports/{file}", "tests")
-
-    # TODO Excluir o documento na máquina após ser enviado para o Drive. Apagar apenas quando o documento for enviado
-    #  com sucesso.
